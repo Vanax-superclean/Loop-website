@@ -1,745 +1,753 @@
-import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loop Resale Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@11.2.10/dist/framer-motion.js"></script>
+    
+    <script type="text/babel">
+        // Import statements are replaced by accessing the global objects
+        const { useState, useMemo } = React;
+        const { motion } = window.FramerMotion; // Access Framer Motion from global scope
 
-// LOOP – Certified Resale Across Every Marketplace
-// Visual-forward single-file prototype (Tailwind + Framer Motion)
-// Features: Landing, Brand section, How it works, Intake, Gallery, Dashboard, Pricing, Testimonials, FAQ
+        // LOOP – Certified Resale Across Every Marketplace
+        // Visual-forward single-file prototype (Tailwind + Framer Motion)
+        // Features: Landing, Brand section, How it works, Intake, Gallery, Dashboard, Pricing, Testimonials, FAQ
 
-const marketplaces = [
-  { id: "ebay", name: "eBay" },
-  { id: "facebook", name: "Facebook Marketplace" },
-  { id: "posh", name: "Poshmark" },
-  { id: "depop", name: "Depop" },
-  { id: "mercari", name: "Mercari" },
-  { id: "whatnot", name: "Whatnot" },
-  { id: "craigslist", name: "Craigslist" },
-];
+        const marketplaces = [
+            { id: "ebay", name: "eBay" },
+            { id: "facebook", name: "Facebook Marketplace" },
+            { id: "posh", name: "Poshmark" },
+            { id: "depop", name: "Depop" },
+            { id: "mercari", name: "Mercari" },
+            { id: "whatnot", name: "Whatnot" },
+            { id: "craigslist", name: "Craigslist" },
+        ];
 
-const categories = [
-  "Clothing",
-  "Shoes",
-  "Electronics",
-  "Home & Kitchen",
-  "Books & Media",
-  "Sports & Outdoors",
-  "Collectibles",
-  "Other",
-];
+        const categories = [
+            "Clothing",
+            "Shoes",
+            "Electronics",
+            "Home & Kitchen",
+            "Books & Media",
+            "Sports & Outdoors",
+            "Collectibles",
+            "Other",
+        ];
 
-function Pill({ children }) {
-  return (
-    <span className="inline-flex items-center text-xs px-2 py-1 rounded-full border bg-white/80">
-      {children}
-    </span>
-  );
-}
-
-function StatCard({ title, value, sub }) {
-  return (
-    <div className="rounded-2xl shadow-sm border p-5 bg-white/70 backdrop-blur">
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className="text-3xl font-semibold mt-1">{value}</div>
-      {sub && <div className="text-xs text-gray-500 mt-1">{sub}</div>}
-    </div>
-  );
-}
-
-function SectionTitle({ eyebrow, title, subtitle }) {
-  return (
-    <div className="max-w-3xl mx-auto text-center pb-8">
-      {eyebrow && (
-        <div className="text-xs uppercase tracking-widest text-emerald-600 font-semibold">
-          {eyebrow}
-        </div>
-      )}
-      <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2">{title}</h2>
-      {subtitle && (
-        <p className="mt-3 text-gray-600 leading-relaxed">{subtitle}</p>
-      )}
-    </div>
-  );
-}
-
-function formatCurrency(n) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
-  } catch {
-    return `$${Number(n).toFixed(2)}`;
-  }
-}
-
-export default function App() {
-  const [items, setItems] = useState([]);
-  const [form, setForm] = useState({
-    title: "",
-    category: categories[0],
-    estPrice: "",
-    condition: "Good",
-    intakeOption: "Pickup",
-    notes: "",
-  });
-  const [photoFiles, setPhotoFiles] = useState([]);
-
-  // --- New: live appraisal state ---
-  const [appraisal, setAppraisal] = useState(null);
-  const [comps, setComps] = useState([]);
-  const [appraising, setAppraising] = useState(false);
-
-  const totalPotential = useMemo(
-    () => items.reduce((sum, it) => sum + (Number(it.estPrice) || 0), 0),
-    [items]
-  );
-  const soldItems = useMemo(() => items.filter((it) => it.status === "Sold"), [items]);
-  const listedItems = useMemo(() => items.filter((it) => it.status === "Listed"), [items]);
-
-  const platformTotals = useMemo(() => {
-    const totals = {};
-    marketplaces.forEach((m) => (totals[m.id] = 0));
-    soldItems.forEach((it) => {
-      if (it.soldOn) totals[it.soldOn] += Number(it.estPrice) || 0;
-    });
-    return totals;
-  }, [soldItems]);
-
-  // --- New: mock internet comps + appraisal engine ---
-  function mockFetchComps(title, category, condition) {
-    // Generate 5 pseudo comps with price jitter and platform bias
-    const base = Math.max(8, Math.min(250, (title.length + category.length) * 1.7));
-    const bias = {
-      Clothing: ["posh", "depop", "mercari", "ebay", "facebook", "craigslist"],
-      Shoes: ["posh", "ebay", "whatnot", "facebook", "craigslist"],
-      Electronics: ["ebay", "facebook", "mercari", "craigslist"],
-      "Home & Kitchen": ["facebook", "ebay", "mercari"],
-      "Books & Media": ["ebay", "facebook"],
-      "Sports & Outdoors": ["facebook", "ebay", "whatnot"],
-      Collectibles: ["whatnot", "ebay", "mercari", "facebook", "craigslist"],
-      Other: ["facebook", "ebay"],
-    };
-    const plats = bias[category] || ["ebay", "facebook", "mercari"];
-    const condFactor = { "New": 1.2, "Like New": 1.05, "Good": 1.0, "Fair": 0.8 }[condition] || 1;
-    const n = 5;
-    const generated = Array.from({ length: n }).map((_, i) => {
-      const price = Math.round((base * condFactor * (0.85 + Math.random() * 0.4)) * 100) / 100;
-      const plat = plats[i % plats.length];
-      const days = Math.ceil(3 + Math.random() * 21); // days-to-sell
-      return {
-        id: Math.random().toString(36).slice(2, 8),
-        platform: plat,
-        title: `${title} (comp ${i + 1})`,
-        soldPrice: price,
-        daysToSell: days,
-        date: new Date(Date.now() - days * 86400000).toISOString().slice(0, 10),
-      };
-    });
-    return generated;
-  }
-
-  function runAppraisal() {
-    if (!form.title) return;
-    setAppraising(true);
-    const c = mockFetchComps(form.title, form.category, form.condition);
-    const prices = c.map((x) => x.soldPrice);
-    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const p10 = prices.slice().sort((a, b) => a - b)[0];
-    const p90 = prices.slice().sort((a, b) => a - b)[prices.length - 1];
-    const bestPlatform = c.reduce((acc, x) => {
-      acc[x.platform] = (acc[x.platform] || 0) + x.soldPrice;
-      return acc;
-    }, {});
-    const topPlat = Object.entries(bestPlatform).sort((a, b) => b[1] - a[1])[0]?.[0] || "ebay";
-    const days = c.map((x) => x.daysToSell);
-    const avgDays = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
-    const conf = Math.min(95, 60 + Math.round(Math.random() * 35));
-
-    const app = {
-      suggested: Math.round(avg * 100) / 100,
-      rangeLow: Math.round(p10 * 100) / 100,
-      rangeHigh: Math.round(p90 * 100) / 100,
-      topPlatforms: [topPlat, ...new Set(c.map((x) => x.platform))].slice(0, 3),
-      avgDaysToSell: avgDays,
-      confidence: conf,
-      notes: `Based on ${c.length} recent comps in ${form.category} and ${form.condition} condition.`,
-    };
-    setComps(c);
-    setAppraisal(app);
-    setTimeout(() => setAppraising(false), 350);
-  }
-
-  function handleAddItem(e) {
-    e?.preventDefault();
-    if (!form.title || !form.estPrice) return;
-    const id = Math.random().toString(36).slice(2, 9);
-    const place = marketplaces[Math.floor(Math.random() * marketplaces.length)];
-    const status = Math.random() > 0.6 ? "Listed" : "Queued";
-    const newItem = {
-      id,
-      ...form,
-      photos: photoFiles.map((f) => URL.createObjectURL(f)),
-      status,
-      listedOn: status === "Listed" ? [place.id] : [],
-      createdAt: new Date().toISOString(),
-      appraisal,
-      comps,
-    };
-    setItems((prev) => [newItem, ...prev]);
-    setForm({ title: "", category: categories[0], estPrice: "", condition: "Good", intakeOption: "Pickup", notes: "" });
-    setPhotoFiles([]);
-    setAppraisal(null);
-    setComps([]);
-  }
-  function simulateDistribution() {
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.status === "Queued") {
-          const listCount = 1 + Math.floor(Math.random() * 3);
-          const shuffled = [...marketplaces].sort(() => 0.5 - Math.random());
-          return { ...it, status: "Listed", listedOn: shuffled.slice(0, listCount).map((m) => m.id) };
+        function Pill({ children }) {
+            return (
+                <span className="inline-flex items-center text-xs px-2 py-1 rounded-full border bg-white/80">
+                    {children}
+                </span>
+            );
         }
-        return it;
-      })
-    );
-  }
-  function simulateSales() {
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.status === "Listed" && Math.random() > 0.6) {
-          const on = it.listedOn?.[Math.floor(Math.random() * it.listedOn.length)] || "ebay";
-          return { ...it, status: "Sold", soldOn: on, soldAt: new Date().toISOString() };
-        }
-        return it;
-      })
-    );
-  }
 
-  const topPlatform = useMemo(() => {
-    const entries = Object.entries(platformTotals);
-    if (!entries.length) return null;
-    const [id] = entries.sort((a, b) => b[1] - a[1])[0];
-    return marketplaces.find((m) => m.id === id) || null;
-  }, [platformTotals]);
-
-  const commissionRate = useMemo(() => {
-    const volume = soldItems.reduce((s, it) => s + (Number(it.estPrice) || 0), 0);
-    if (volume > 5000) return 0.15;
-    if (volume > 1000) return 0.18;
-    return 0.22;
-  }, [soldItems]);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white text-gray-900">
-      {/* Nav */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative h-9 w-9">
-              <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400" />
-              <span className="absolute inset-0 rounded-2xl bg-white/20 mix-blend-overlay" />
-            </div>
-            <span className="font-bold text-lg">Loop</span>
-            <span className="ml-2 text-xs text-gray-500">Certified Resale Across Every Marketplace</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <a href="#brand" className="hover:text-emerald-600">Brand</a>
-            <a href="#how" className="hover:text-emerald-600">How it works</a>
-            <a href="#intake" className="hover:text-emerald-600">Add Items</a>
-            <a href="#dashboard" className="hover:text-emerald-600">Dashboard</a>
-            <a href="#pricing" className="hover:text-emerald-600">Pricing</a>
-            <a href="#faq" className="hover:text-emerald-600">FAQ</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <a href="#intake" className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Add Item</a>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-200/60 blur-3xl rounded-full" />
-        <div className="absolute -bottom-28 -left-28 w-96 h-96 bg-teal-200/50 blur-3xl rounded-full" />
-        <div className="max-w-7xl mx-auto px-4 py-14 grid md:grid-cols-2 gap-10 items-center relative">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-4xl md:text-5xl font-extrabold leading-tight"
-            >
-              We sell your stuff <span className="text-emerald-600">everywhere</span> — you just cash out.
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="mt-4 text-gray-600 text-lg"
-            >
-              Photos, pricing, multi-market listings, buyer messages, shipping, payouts — handled.
-            </motion.p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a href="#intake" className="px-4 py-3 rounded-2xl bg-emerald-600 text-white font-medium">Start now</a>
-              <a href="#how" className="px-4 py-3 rounded-2xl border font-medium">See how it works</a>
-            </div>
-            <div className="mt-6 flex gap-2 flex-wrap">
-              {marketplaces.map((m) => (
-                <Pill key={m.id}>{m.name}</Pill>
-              ))}
-            </div>
-          </div>
-
-          {/* Visual dashboard preview */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            className="relative"
-          >
-            <div className="rounded-3xl border bg-white shadow-xl p-5">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold">Seller Snapshot</div>
-                <div className="text-xs text-gray-500">Live · Demo</div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
-                <StatCard title="Potential Earnings" value={formatCurrency(totalPotential)} sub={`${items.length} items submitted`} />
-                <StatCard title="Listed" value={listedItems.length} sub="active listings" />
-                <StatCard title="Sold" value={soldItems.length} sub={topPlatform ? `Top: ${topPlatform.name}` : "—"} />
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {["/placeholder1.png","/placeholder2.png","/placeholder3.png"].map((src, i) => (
-                  <div key={i} className="aspect-video rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border" />
-                ))}
-              </div>
-            </div>
-            <div className="absolute -bottom-6 -right-6 w-40 h-40 rounded-3xl bg-emerald-100 blur-2xl opacity-70" />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Brand strip */}
-      <section id="brand" className="py-10 border-t bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-sm text-gray-500 mb-3">Trusted by buyers on</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {marketplaces.map((m) => (
-              <div key={m.id} className="rounded-xl border p-3 text-center bg-white/70">
-                <span className="text-sm font-medium">{m.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how" className="py-14">
-        <SectionTitle
-          eyebrow="How it works"
-          title="From junk drawer to jackpot in four steps"
-          subtitle="Intake, optimize, sell everywhere, cash out."
-        />
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-4 gap-6">
-          {[{t:"Snap or drop off",d:"Upload quick photos or schedule a pickup. We accept most categories."},
-            {t:"We optimize the listing",d:"Pro photos, SEO titles, and pricing by platform comps."},
-            {t:"Sell everywhere",d:"We cross-list as a certified seller on multiple marketplaces."},
-            {t:"Cash out",d:"When it sells, we take a small commission and pay you instantly."}].map((s, i) => (
-            <div key={i} className="rounded-2xl border p-5 bg-white/70">
-              <div className="text-xs text-gray-500">Step {i+1}</div>
-              <div className="font-semibold mt-1">{s.t}</div>
-              <div className="text-sm text-gray-600 mt-2">{s.d}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Intake + Gallery */}
-      <section id="intake" className="py-14 border-t bg-white">
-        <SectionTitle
-          eyebrow="Add Items"
-          title="Quick intake with visual queue"
-          subtitle="This demo stores your items locally so you can simulate distribution and sales."
-        />
-        <div className="max-w-6xl mx-auto px-4 grid lg:grid-cols-3 gap-6">
-          {/* Form */}
-          <form onSubmit={handleAddItem} className="lg:col-span-1 rounded-2xl border p-5 bg-white/90 backdrop-blur">
-            <label className="block text-sm font-medium">Item title</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="Nike Air Max, Keurig K-Express..."
-              value={form.title}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, title: e.target.value }))
-                if (e.target.value.length > 2) runAppraisal();
-              }}
-              required
-            />
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="block text-sm font-medium">Category</label>
-                <select
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
-                  value={form.category}
-                  onChange={(e) => { setForm((f) => ({ ...f, category: e.target.value })); runAppraisal(); }}
-                >
-                  {categories.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Estimated price</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
-                  value={form.estPrice}
-                  onChange={(e) => setForm((f) => ({ ...f, estPrice: e.target.value }))}
-                  placeholder={appraisal ? String(appraisal.suggested) : "25.00"}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="block text-sm font-medium">Condition</label>
-                <select
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
-                  value={form.condition}
-                  onChange={(e) => { setForm((f) => ({ ...f, condition: e.target.value })); runAppraisal(); }}
-                >
-                  {["New", "Like New", "Good", "Fair"].map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Intake option</label>
-                <select
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
-                  value={form.intakeOption}
-                  onChange={(e) => setForm((f) => ({ ...f, intakeOption: e.target.value }))}
-                >
-                  {["Pickup", "Drop-off", "Ship-in"].map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* --- New: live appraisal card --- */}
-            <div className="mt-4 rounded-2xl border p-4 bg-gradient-to-br from-emerald-50 to-teal-50">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold">Rundown & Appraisal</div>
-                <button type="button" onClick={runAppraisal} className="text-xs px-2 py-1 rounded-lg border">Re-run</button>
-              </div>
-              {!appraisal && !appraising && (
-                <div className="text-xs text-gray-600 mt-2">Start typing a title to generate comps and a suggested price.</div>
-              )}
-              {appraising && <div className="text-xs text-gray-600 mt-2">Scanning comps…</div>}
-              {appraisal && (
-                <div className="mt-2 text-sm">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 rounded-full border bg-white">Suggested: <strong>{formatCurrency(appraisal.suggested)}</strong></span>
-                    <span className="text-xs px-2 py-1 rounded-full border bg-white">Range: {formatCurrency(appraisal.rangeLow)}–{formatCurrency(appraisal.rangeHigh)}</span>
-                    <span className="text-xs px-2 py-1 rounded-full border bg-white">Confidence: {appraisal.confidence}%</span>
-                    <span className="text-xs px-2 py-1 rounded-full border bg-white">Avg days to sell: {appraisal.avgDaysToSell}</span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 items-center">
-                    <span className="text-xs text-gray-600">Best platforms:</span>
-                    {appraisal.topPlatforms.map((id) => (
-                      <Pill key={id}>{(marketplaces.find((m) => m.id === id)?.name) || id}</Pill>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-xs text-gray-600">{appraisal.notes}</div>
-                  <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.suggested }))} className="px-3 py-2 rounded-xl border">Use suggestion</button>
-                    <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.rangeLow }))} className="px-3 py-2 rounded-xl border">Price to move</button>
-                    <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.rangeHigh }))} className="px-3 py-2 rounded-xl border">Aim high</button>
-                  </div>
-                  {/* comps table */}
-                  <div className="mt-3 overflow-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-left text-gray-500">
-                          <th className="py-1 pr-2">Comp</th>
-                          <th className="py-1 pr-2">Platform</th>
-                          <th className="py-1 pr-2">Sold</th>
-                          <th className="py-1 pr-2">Days</th>
-                          <th className="py-1 pr-2">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {comps.map((c) => (
-                          <tr key={c.id} className="border-t">
-                            <td className="py-1 pr-2">{c.title}</td>
-                            <td className="py-1 pr-2">{(marketplaces.find((m) => m.id === c.platform)?.name) || c.platform}</td>
-                            <td className="py-1 pr-2">{formatCurrency(c.soldPrice)}</td>
-                            <td className="py-1 pr-2">{c.daysToSell}</td>
-                            <td className="py-1 pr-2">{c.date}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+        function StatCard({ title, value, sub }) {
+            return (
+                <div className="rounded-2xl shadow-sm border p-5 bg-white/70 backdrop-blur">
+                    <div className="text-sm text-gray-500">{title}</div>
+                    <div className="text-3xl font-semibold mt-1">{value}</div>
+                    {sub && <div className="text-xs text-gray-500 mt-1">{sub}</div>}
                 </div>
-              )}
-            </div>
+            );
+        }
 
-            <div className="mt-3">
-              <label className="block text-sm font-medium">Photos (mock)</label>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => setPhotoFiles(Array.from(e.target.files || []))}
-                className="mt-1 w-full rounded-xl border px-3 py-2"
-              />
-            </div>
-            <div className="mt-3">
-              <label className="block text-sm font-medium">Notes</label>
-              <textarea
-                className="mt-1 w-full rounded-xl border px-3 py-2"
-                rows={3}
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                placeholder="Accessories, defects, model numbers, etc."
-              />
-            </div>
-            <button type="submit" className="mt-4 w-full px-4 py-3 rounded-2xl bg-emerald-600 text-white font-medium">
-              Add Item to Intake
-            </button>
-            <div className="text-xs text-gray-500 mt-2">All data stays in your browser for this demo.</div>
-          </form>
-
-          {/* Queue + Visuals */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="rounded-2xl border p-5 bg-white/80">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold">Your Intake Queue</div>
-                <div className="text-sm text-gray-500">Potential: {formatCurrency(totalPotential)}</div>
-              </div>
-              <div className="mt-4 grid md:grid-cols-2 gap-4">
-                {items.map((it) => (
-                  <div key={it.id} className="rounded-xl border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium">{it.title}</div>
-                        <div className="text-xs text-gray-500">
-                          {it.category} · {it.condition} · {formatCurrency(it.estPrice)} · {it.intakeOption}
+        function SectionTitle({ eyebrow, title, subtitle }) {
+            return (
+                <div className="max-w-3xl mx-auto text-center pb-8">
+                    {eyebrow && (
+                        <div className="text-xs uppercase tracking-widest text-emerald-600 font-semibold">
+                            {eyebrow}
                         </div>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full border ${it.status === "Sold" ? "bg-emerald-50 text-emerald-700" : it.status === "Listed" ? "bg-teal-50 text-teal-700" : "bg-gray-50 text-gray-700"}`}>
-                        {it.status}
-                      </span>
-                    </div>
-                    {it.photos?.length > 0 ? (
-                      <div className="mt-3 grid grid-cols-4 gap-2">
-                        {it.photos.slice(0, 4).map((src, i) => (
-                          <img key={i} src={src} alt="preview" className="w-full h-20 object-cover rounded-lg border" />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-3 aspect-[4/1] rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border" />
                     )}
-                    {it.appraisal && (
-                      <div className="mt-3 text-xs text-gray-700">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-2 py-1 rounded-full border bg-white">Suggest: <strong>{formatCurrency(it.appraisal.suggested)}</strong></span>
-                          <span className="px-2 py-1 rounded-full border bg-white">Range: {formatCurrency(it.appraisal.rangeLow)}–{formatCurrency(it.appraisal.rangeHigh)}</span>
-                          <span className="px-2 py-1 rounded-full border bg-white">ETA: {it.appraisal.avgDaysToSell} days</span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2 items-center">
-                          <span className="text-gray-500">Best platforms:</span>
-                          {it.appraisal.topPlatforms.map((id) => (
-                            <Pill key={id}>{(marketplaces.find((m) => m.id === id)?.name) || id}</Pill>
-                          ))}
-                        </div>
-                      </div>
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2">{title}</h2>
+                    {subtitle && (
+                        <p className="mt-3 text-gray-600 leading-relaxed">{subtitle}</p>
                     )}
-                    {it.status !== "Queued" && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {it.listedOn?.map((id) => (
-                          <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {!items.length && (
-                  <div className="text-sm text-gray-500">No items yet. Add one using the form to the left.</div>
-                )}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button onClick={simulateDistribution} className="px-4 py-2 rounded-xl border">Simulate cross-listing</button>
-                <button onClick={simulateSales} className="px-4 py-2 rounded-xl border">Simulate sales</button>
-              </div>
-            </div>
+                </div>
+            );
+        }
 
-            {/* Visual gallery */}
-            <div className="rounded-2xl border p-5 bg-white/80">
-              <div className="font-semibold mb-3">Sample Gallery</div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[1,2,3,4,5,6,7,8].map((i) => (
-                  <div key={i} className="aspect-square rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 border" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        function formatCurrency(n) {
+            try {
+                return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
+            } catch {
+                return `$${Number(n).toFixed(2)}`;
+            }
+        }
 
-      {/* Dashboard */}
-      <section id="dashboard" className="py-14">
-        <SectionTitle
-          eyebrow="Seller Dashboard"
-          title="Operate like a pro from day one"
-          subtitle="A single view of intake, listings, sales, and payouts across platforms."
-        />
-        <div className="max-w-7xl mx-auto px-4 space-y-6">
-          <div className="grid md:grid-cols-4 gap-4">
-            <StatCard title="Total Potential" value={formatCurrency(totalPotential)} sub={`${items.length} items`} />
-            <StatCard title="Active Listings" value={listedItems.length} sub="multi-platform" />
-            <StatCard title="Sold (demo)" value={soldItems.length} sub={topPlatform ? `Top: ${topPlatform.name}` : "—"} />
-            <StatCard title="Commission Tier" value={`${Math.round(commissionRate * 100)}%`} sub="updates monthly" />
-          </div>
-          <div className="grid md:grid-cols-12 gap-6">
-            <div className="md:col-span-7 rounded-2xl border bg-white/80 p-5">
-              <div className="font-semibold mb-3">Active Listings</div>
-              <div className="overflow-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500">
-                      <th className="py-2 pr-2">Item</th>
-                      <th className="py-2 pr-2">Platforms</th>
-                      <th className="py-2 pr-2">Est. Price</th>
-                      <th className="py-2 pr-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.filter((i) => i.status !== "Queued").map((it) => (
-                      <tr key={it.id} className="border-t">
-                        <td className="py-2 pr-2">
-                          <div className="font-medium">{it.title}</div>
-                          <div className="text-xs text-gray-500">{it.category} · {it.condition}</div>
-                        </td>
-                        <td className="py-2 pr-2">
-                          <div className="flex flex-wrap gap-1">
-                            {(it.soldOn ? [it.soldOn] : it.listedOn)?.map((id) => (
-                              <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
+        function App() {
+            const [items, setItems] = useState([]);
+            const [form, setForm] = useState({
+                title: "",
+                category: categories[0],
+                estPrice: "",
+                condition: "Good",
+                intakeOption: "Pickup",
+                notes: "",
+            });
+            const [photoFiles, setPhotoFiles] = useState([]);
+
+            // --- New: live appraisal state ---
+            const [appraisal, setAppraisal] = useState(null);
+            const [comps, setComps] = useState([]);
+            const [appraising, setAppraising] = useState(false);
+
+            const totalPotential = useMemo(
+                () => items.reduce((sum, it) => sum + (Number(it.estPrice) || 0), 0),
+                [items]
+            );
+            const soldItems = useMemo(() => items.filter((it) => it.status === "Sold"), [items]);
+            const listedItems = useMemo(() => items.filter((it) => it.status === "Listed"), [items]);
+
+            const platformTotals = useMemo(() => {
+                const totals = {};
+                marketplaces.forEach((m) => (totals[m.id] = 0));
+                soldItems.forEach((it) => {
+                    if (it.soldOn) totals[it.soldOn] += Number(it.estPrice) || 0;
+                });
+                return totals;
+            }, [soldItems]);
+
+            // --- New: mock internet comps + appraisal engine ---
+            function mockFetchComps(title, category, condition) {
+                // Generate 5 pseudo comps with price jitter and platform bias
+                const base = Math.max(8, Math.min(250, (title.length + category.length) * 1.7));
+                const bias = {
+                    Clothing: ["posh", "depop", "mercari", "ebay", "facebook", "craigslist"],
+                    Shoes: ["posh", "ebay", "whatnot", "facebook", "craigslist"],
+                    Electronics: ["ebay", "facebook", "mercari", "craigslist"],
+                    "Home & Kitchen": ["facebook", "ebay", "mercari"],
+                    "Books & Media": ["ebay", "facebook"],
+                    "Sports & Outdoors": ["facebook", "ebay", "whatnot"],
+                    Collectibles: ["whatnot", "ebay", "mercari", "facebook", "craigslist"],
+                    Other: ["facebook", "ebay"],
+                };
+                const plats = bias[category] || ["ebay", "facebook", "mercari"];
+                const condFactor = { "New": 1.2, "Like New": 1.05, "Good": 1.0, "Fair": 0.8 }[condition] || 1;
+                const n = 5;
+                const generated = Array.from({ length: n }).map((_, i) => {
+                    const price = Math.round((base * condFactor * (0.85 + Math.random() * 0.4)) * 100) / 100;
+                    const plat = plats[i % plats.length];
+                    const days = Math.ceil(3 + Math.random() * 21); // days-to-sell
+                    return {
+                        id: Math.random().toString(36).slice(2, 8),
+                        platform: plat,
+                        title: `${title} (comp ${i + 1})`,
+                        soldPrice: price,
+                        daysToSell: days,
+                        date: new Date(Date.now() - days * 86400000).toISOString().slice(0, 10),
+                    };
+                });
+                return generated;
+            }
+
+            function runAppraisal() {
+                if (!form.title) return;
+                setAppraising(true);
+                const c = mockFetchComps(form.title, form.category, form.condition);
+                const prices = c.map((x) => x.soldPrice);
+                const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+                const p10 = prices.slice().sort((a, b) => a - b)[0];
+                const p90 = prices.slice().sort((a, b) => a - b)[prices.length - 1];
+                const bestPlatform = c.reduce((acc, x) => {
+                    acc[x.platform] = (acc[x.platform] || 0) + x.soldPrice;
+                    return acc;
+                }, {});
+                const topPlat = Object.entries(bestPlatform).sort((a, b) => b[1] - a[1])[0]?.[0] || "ebay";
+                const days = c.map((x) => x.daysToSell);
+                const avgDays = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
+                const conf = Math.min(95, 60 + Math.round(Math.random() * 35));
+
+                const app = {
+                    suggested: Math.round(avg * 100) / 100,
+                    rangeLow: Math.round(p10 * 100) / 100,
+                    rangeHigh: Math.round(p90 * 100) / 100,
+                    topPlatforms: [topPlat, ...new Set(c.map((x) => x.platform))].slice(0, 3),
+                    avgDaysToSell: avgDays,
+                    confidence: conf,
+                    notes: `Based on ${c.length} recent comps in ${form.category} and ${form.condition} condition.`,
+                };
+                setComps(c);
+                setAppraisal(app);
+                setTimeout(() => setAppraising(false), 350);
+            }
+
+            function handleAddItem(e) {
+                e?.preventDefault();
+                if (!form.title || !form.estPrice) return;
+                const id = Math.random().toString(36).slice(2, 9);
+                const place = marketplaces[Math.floor(Math.random() * marketplaces.length)];
+                const status = Math.random() > 0.6 ? "Listed" : "Queued";
+                const newItem = {
+                    id,
+                    ...form,
+                    photos: photoFiles.map((f) => URL.createObjectURL(f)),
+                    status,
+                    listedOn: status === "Listed" ? [place.id] : [],
+                    createdAt: new Date().toISOString(),
+                    appraisal,
+                    comps,
+                };
+                setItems((prev) => [newItem, ...prev]);
+                setForm({ title: "", category: categories[0], estPrice: "", condition: "Good", intakeOption: "Pickup", notes: "" });
+                setPhotoFiles([]);
+                setAppraisal(null);
+                setComps([]);
+            }
+            function simulateDistribution() {
+                setItems((prev) =>
+                    prev.map((it) => {
+                        if (it.status === "Queued") {
+                            const listCount = 1 + Math.floor(Math.random() * 3);
+                            const shuffled = [...marketplaces].sort(() => 0.5 - Math.random());
+                            return { ...it, status: "Listed", listedOn: shuffled.slice(0, listCount).map((m) => m.id) };
+                        }
+                        return it;
+                    })
+                );
+            }
+            function simulateSales() {
+                setItems((prev) =>
+                    prev.map((it) => {
+                        if (it.status === "Listed" && Math.random() > 0.6) {
+                            const on = it.listedOn?.[Math.floor(Math.random() * it.listedOn.length)] || "ebay";
+                            return { ...it, status: "Sold", soldOn: on, soldAt: new Date().toISOString() };
+                        }
+                        return it;
+                    })
+                );
+            }
+
+            const topPlatform = useMemo(() => {
+                const entries = Object.entries(platformTotals);
+                if (!entries.length) return null;
+                const [id] = entries.sort((a, b) => b[1] - a[1])[0];
+                return marketplaces.find((m) => m.id === id) || null;
+            }, [platformTotals]);
+
+            const commissionRate = useMemo(() => {
+                const volume = soldItems.reduce((s, it) => s + (Number(it.estPrice) || 0), 0);
+                if (volume > 5000) return 0.15;
+                if (volume > 1000) return 0.18;
+                return 0.22;
+            }, [soldItems]);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white text-gray-900">
+                    {/* Nav */}
+                    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
+                        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="relative h-9 w-9">
+                                    <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400" />
+                                    <span className="absolute inset-0 rounded-2xl bg-white/20 mix-blend-overlay" />
+                                </div>
+                                <span className="font-bold text-lg">Loop</span>
+                                <span className="ml-2 text-xs text-gray-500">Certified Resale Across Every Marketplace</span>
+                            </div>
+                            <nav className="hidden md:flex items-center gap-6 text-sm">
+                                <a href="#brand" className="hover:text-emerald-600">Brand</a>
+                                <a href="#how" className="hover:text-emerald-600">How it works</a>
+                                <a href="#intake" className="hover:text-emerald-600">Add Items</a>
+                                <a href="#dashboard" className="hover:text-emerald-600">Dashboard</a>
+                                <a href="#pricing" className="hover:text-emerald-600">Pricing</a>
+                                <a href="#faq" className="hover:text-emerald-600">FAQ</a>
+                            </nav>
+                            <div className="flex items-center gap-2">
+                                <a href="#intake" className="px-3 py-2 rounded-xl bg-emerald-600 text-white">Add Item</a>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Hero */}
+                    <section className="relative overflow-hidden">
+                        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-200/60 blur-3xl rounded-full" />
+                        <div className="absolute -bottom-28 -left-28 w-96 h-96 bg-teal-200/50 blur-3xl rounded-full" />
+                        <div className="max-w-7xl mx-auto px-4 py-14 grid md:grid-cols-2 gap-10 items-center relative">
+                            <div>
+                                <motion.h1
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.5 }}
+                                    className="text-4xl md:text-5xl font-extrabold leading-tight"
+                                >
+                                    We sell your stuff <span className="text-emerald-600">everywhere</span> — you just cash out.
+                                </motion.h1>
+                                <motion.p
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.6, delay: 0.1 }}
+                                    className="mt-4 text-gray-600 text-lg"
+                                >
+                                    Photos, pricing, multi-market listings, buyer messages, shipping, payouts — handled.
+                                </motion.p>
+                                <div className="mt-6 flex flex-wrap gap-3">
+                                    <a href="#intake" className="px-4 py-3 rounded-2xl bg-emerald-600 text-white font-medium">Start now</a>
+                                    <a href="#how" className="px-4 py-3 rounded-2xl border font-medium">See how it works</a>
+                                </div>
+                                <div className="mt-6 flex gap-2 flex-wrap">
+                                    {marketplaces.map((m) => (
+                                        <Pill key={m.id}>{m.name}</Pill>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Visual dashboard preview */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.6, delay: 0.15 }}
+                                className="relative"
+                            >
+                                <div className="rounded-3xl border bg-white shadow-xl p-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="font-semibold">Seller Snapshot</div>
+                                        <div className="text-xs text-gray-500">Live · Demo</div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                                        <StatCard title="Potential Earnings" value={formatCurrency(totalPotential)} sub={`${items.length} items submitted`} />
+                                        <StatCard title="Listed" value={listedItems.length} sub="active listings" />
+                                        <StatCard title="Sold" value={soldItems.length} sub={topPlatform ? `Top: ${topPlatform.name}` : "—"} />
+                                    </div>
+                                    <div className="mt-4 grid grid-cols-3 gap-2">
+                                        {["/placeholder1.png","/placeholder2.png","/placeholder3.png"].map((src, i) => (
+                                            <div key={i} className="aspect-video rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border" />
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="absolute -bottom-6 -right-6 w-40 h-40 rounded-3xl bg-emerald-100 blur-2xl opacity-70" />
+                            </motion.div>
+                        </div>
+                    </section>
+
+                    {/* Brand strip */}
+                    <section id="brand" className="py-10 border-t bg-white">
+                        <div className="max-w-7xl mx-auto px-4">
+                            <div className="text-sm text-gray-500 mb-3">Trusted by buyers on</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                                {marketplaces.map((m) => (
+                                    <div key={m.id} className="rounded-xl border p-3 text-center bg-white/70">
+                                        <span className="text-sm font-medium">{m.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* How it works */}
+                    <section id="how" className="py-14">
+                        <SectionTitle
+                            eyebrow="How it works"
+                            title="From junk drawer to jackpot in four steps"
+                            subtitle="Intake, optimize, sell everywhere, cash out."
+                        />
+                        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-4 gap-6">
+                            {[{t:"Snap or drop off",d:"Upload quick photos or schedule a pickup. We accept most categories."},
+                                {t:"We optimize the listing",d:"Pro photos, SEO titles, and pricing by platform comps."},
+                                {t:"Sell everywhere",d:"We cross-list as a certified seller on multiple marketplaces."},
+                                {t:"Cash out",d:"When it sells, we take a small commission and pay you instantly."}].map((s, i) => (
+                                <div key={i} className="rounded-2xl border p-5 bg-white/70">
+                                    <div className="text-xs text-gray-500">Step {i+1}</div>
+                                    <div className="font-semibold mt-1">{s.t}</div>
+                                    <div className="text-sm text-gray-600 mt-2">{s.d}</div>
+                                </div>
                             ))}
-                          </div>
-                        </td>
-                        <td className="py-2 pr-2">{formatCurrency(it.estPrice)}</td>
-                        <td className="py-2 pr-2">{it.status}</td>
-                      </tr>
-                    ))}
-                    {items.filter((i) => i.status !== "Queued").length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="py-4 text-sm text-gray-500">No active listings yet.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="md:col-span-5 rounded-2xl border bg-white/80 p-5">
-              <div className="font-semibold mb-3">Platform Performance (demo)</div>
-              <div className="space-y-2">
-                {marketplaces.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3">
-                    <div className="w-28 text-sm text-gray-600">{m.name}</div>
-                    <div className="h-2 flex-1 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500"
-                        style={{ width: `${Math.min(100, (platformTotals[m.id] || 0) / (totalPotential || 1) * 100)}%` }}
-                      />
-                    </div>
-                    <div className="w-24 text-right text-sm">{formatCurrency(platformTotals[m.id] || 0)}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-xs text-gray-500">Demo metric: sum of sold item estimates by platform.</div>
-            </div>
-          </div>
-        </div>
-      </section>
+                        </div>
+                    </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-14 border-t bg-white">
-        <SectionTitle
-          eyebrow="Pricing"
-          title="Simple, performance-based pricing"
-          subtitle="Commission scales down as your monthly volume goes up. Optional add-ons for brand sellers."
-        />
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-6">
-          {[{tier:"Starter",comm:22,desc:"Great for first-time sellers",perks:["Cross-list to 2 markets","Standard photos","Email support"]},
-            {tier:"Growth",comm:18,desc:"For frequent sellers",perks:["Cross-list to 4+ markets","Pro photos & SEO","Priority support"]},
-            {tier:"Brand",comm:15,desc:"Creators & small brands",perks:["Bulk intake & SKU support","Analytics dashboard","Dedicated account rep"]}].map((p, i) => (
-            <div key={i} className="rounded-2xl border p-6 bg-white/80">
-              <div className="text-xs uppercase tracking-widest text-emerald-600 font-semibold">{p.tier}</div>
-              <div className="text-4xl font-bold mt-2">{p.comm}% <span className="text-base font-normal text-gray-500">commission</span></div>
-              <div className="text-sm text-gray-600 mt-2">{p.desc}</div>
-              <ul className="mt-4 space-y-2 text-sm">
-                {p.perks.map((perk, j) => (
-                  <li key={j} className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />{perk}</li>
-                ))}
-              </ul>
-              <a href="#intake" className="mt-6 inline-block px-4 py-2 rounded-xl border">Get started</a>
-            </div>
-          ))}
-        </div>
-      </section>
+                    {/* Intake + Gallery */}
+                    <section id="intake" className="py-14 border-t bg-white">
+                        <SectionTitle
+                            eyebrow="Add Items"
+                            title="Quick intake with visual queue"
+                            subtitle="This demo stores your items locally so you can simulate distribution and sales."
+                        />
+                        <div className="max-w-6xl mx-auto px-4 grid lg:grid-cols-3 gap-6">
+                            {/* Form */}
+                            <form onSubmit={handleAddItem} className="lg:col-span-1 rounded-2xl border p-5 bg-white/90 backdrop-blur">
+                                <label className="block text-sm font-medium">Item title</label>
+                                <input
+                                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                                    placeholder="Nike Air Max, Keurig K-Express..."
+                                    value={form.title}
+                                    onChange={(e) => {
+                                        setForm((f) => ({ ...f, title: e.target.value }))
+                                        if (e.target.value.length > 2) runAppraisal();
+                                    }}
+                                    required
+                                />
+                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                    <div>
+                                        <label className="block text-sm font-medium">Category</label>
+                                        <select
+                                            className="mt-1 w-full rounded-xl border px-3 py-2"
+                                            value={form.category}
+                                            onChange={(e) => { setForm((f) => ({ ...f, category: e.target.value })); runAppraisal(); }}
+                                        >
+                                            {categories.map((c) => (
+                                                <option key={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium">Estimated price</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="mt-1 w-full rounded-xl border px-3 py-2"
+                                            value={form.estPrice}
+                                            onChange={(e) => setForm((f) => ({ ...f, estPrice: e.target.value }))}
+                                            placeholder={appraisal ? String(appraisal.suggested) : "25.00"}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                    <div>
+                                        <label className="block text-sm font-medium">Condition</label>
+                                        <select
+                                            className="mt-1 w-full rounded-xl border px-3 py-2"
+                                            value={form.condition}
+                                            onChange={(e) => { setForm((f) => ({ ...f, condition: e.target.value })); runAppraisal(); }}
+                                        >
+                                            {["New", "Like New", "Good", "Fair"].map((c) => (
+                                                <option key={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium">Intake option</label>
+                                        <select
+                                            className="mt-1 w-full rounded-xl border px-3 py-2"
+                                            value={form.intakeOption}
+                                            onChange={(e) => setForm((f) => ({ ...f, intakeOption: e.target.value }))}
+                                        >
+                                            {["Pickup", "Drop-off", "Ship-in"].map((c) => (
+                                                <option key={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
-      {/* Testimonials */}
-      <section className="py-14">
-        <SectionTitle
-          eyebrow="Testimonials"
-          title="People love getting their weekends back"
-          subtitle="Students, creators, and busy families are our earliest fans."
-        />
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-6">
-          {[{n:"Alyssa – Student",t:"Sold 9 items I would've donated. Got $118 and my closet back."},
-            {n:"Marco – Creator",t:"Loop listed my small-batch candles across 4 platforms. I just watch payouts."},
-            {n:"Dani – Mom of 3",t:"Pickup, photos, messages… all handled. Worth every percent."}].map((c, i) => (
-            <motion.div key={i} initial={{opacity:0,y:10}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="rounded-2xl border p-5 bg-white/80">
-              <div className="text-sm text-gray-600">“{c.t}”</div>
-              <div className="text-xs mt-3 text-emerald-700 font-medium">{c.n}</div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+                                {/* --- New: live appraisal card --- */}
+                                <div className="mt-4 rounded-2xl border p-4 bg-gradient-to-br from-emerald-50 to-teal-50">
+                                    <div className="flex items-center justify-between">
+                                        <div className="font-semibold">Rundown & Appraisal</div>
+                                        <button type="button" onClick={runAppraisal} className="text-xs px-2 py-1 rounded-lg border">Re-run</button>
+                                    </div>
+                                    {!appraisal && !appraising && (
+                                        <div className="text-xs text-gray-600 mt-2">Start typing a title to generate comps and a suggested price.</div>
+                                    )}
+                                    {appraising && <div className="text-xs text-gray-600 mt-2">Scanning comps…</div>}
+                                    {appraisal && (
+                                        <div className="mt-2 text-sm">
+                                            <div className="flex flex-wrap gap-2">
+                                                <span className="text-xs px-2 py-1 rounded-full border bg-white">Suggested: <strong>{formatCurrency(appraisal.suggested)}</strong></span>
+                                                <span className="text-xs px-2 py-1 rounded-full border bg-white">Range: {formatCurrency(appraisal.rangeLow)}–{formatCurrency(appraisal.rangeHigh)}</span>
+                                                <span className="text-xs px-2 py-1 rounded-full border bg-white">Confidence: {appraisal.confidence}%</span>
+                                                <span className="text-xs px-2 py-1 rounded-full border bg-white">Avg days to sell: {appraisal.avgDaysToSell}</span>
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap gap-2 items-center">
+                                                <span className="text-xs text-gray-600">Best platforms:</span>
+                                                {appraisal.topPlatforms.map((id) => (
+                                                    <Pill key={id}>{(marketplaces.find((m) => m.id === id)?.name) || id}</Pill>
+                                                ))}
+                                            </div>
+                                            <div className="mt-2 text-xs text-gray-600">{appraisal.notes}</div>
+                                            <div className="mt-3 flex gap-2">
+                                                <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.suggested }))} className="px-3 py-2 rounded-xl border">Use suggestion</button>
+                                                <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.rangeLow }))} className="px-3 py-2 rounded-xl border">Price to move</button>
+                                                <button type="button" onClick={() => setForm((f) => ({ ...f, estPrice: appraisal.rangeHigh }))} className="px-3 py-2 rounded-xl border">Aim high</button>
+                                            </div>
+                                            {/* comps table */}
+                                            <div className="mt-3 overflow-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead>
+                                                        <tr className="text-left text-gray-500">
+                                                            <th className="py-1 pr-2">Comp</th>
+                                                            <th className="py-1 pr-2">Platform</th>
+                                                            <th className="py-1 pr-2">Sold</th>
+                                                            <th className="py-1 pr-2">Days</th>
+                                                            <th className="py-1 pr-2">Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {comps.map((c) => (
+                                                            <tr key={c.id} className="border-t">
+                                                                <td className="py-1 pr-2">{c.title}</td>
+                                                                <td className="py-1 pr-2">{(marketplaces.find((m) => m.id === c.platform)?.name) || c.platform}</td>
+                                                                <td className="py-1 pr-2">{formatCurrency(c.soldPrice)}</td>
+                                                                <td className="py-1 pr-2">{c.daysToSell}</td>
+                                                                <td className="py-1 pr-2">{c.date}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
-      {/* FAQ + Footer */}
-      <section id="faq" className="py-14 border-t bg-white">
-        <SectionTitle
-          eyebrow="FAQ"
-          title="What people ask us"
-          subtitle="Short answers you can use on a pitch slide or landing page."
-        />
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-6">
-          {[{q:"What do you accept?",a:"Most small-to-medium items that can ship safely or swap locally. Prohibited: hazardous goods and recalled items."},
-            {q:"How do payouts work?",a:"Once an item sells and clears the return window, we pay you by bank transfer or Venmo."},
-            {q:"Who sets pricing?",a:"We recommend a price using marketplace comps; you can cap a minimum if you want."},
-            {q:"What if it doesn't sell?",a:"After 60 days, choose: donate, return, or markdown for clearance."},
-            {q:"Do you pick up?",a:"Yes in pilot cities. Otherwise ship-in or local drop-off lockers."},
-            {q:"Are you insured?",a:"Yes—intake items are covered while in our possession."}].map((f, i) => (
-            <div key={i} className="rounded-2xl border p-5 bg-white/80">
-              <div className="font-medium">{f.q}</div>
-              <div className="text-sm text-gray-600 mt-1">{f.a}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+                                <div className="mt-3">
+                                    <label className="block text-sm font-medium">Photos (mock)</label>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={(e) => setPhotoFiles(Array.from(e.target.files || []))}
+                                        className="mt-1 w-full rounded-xl border px-3 py-2"
+                                    />
+                                </div>
+                                <div className="mt-3">
+                                    <label className="block text-sm font-medium">Notes</label>
+                                    <textarea
+                                        className="mt-1 w-full rounded-xl border px-3 py-2"
+                                        rows={3}
+                                        value={form.notes}
+                                        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                                        placeholder="Accessories, defects, model numbers, etc."
+                                    />
+                                </div>
+                                <button type="submit" className="mt-4 w-full px-4 py-3 rounded-2xl bg-emerald-600 text-white font-medium">
+                                    Add Item to Intake
+                                </button>
+                                <div className="text-xs text-gray-500 mt-2">All data stays in your browser for this demo.</div>
+                            </form>
 
-      <footer className="py-10 border-t">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400" />
-            <div className="font-semibold">Loop</div>
-            <div className="text-xs text-gray-500">© {new Date().getFullYear()} Demo</div>
-          </div>
-          <div className="text-sm text-gray-500">
-            Interactive prototype for an entrepreneurship class. No real sales occur.
-          </div>
+                            {/* Queue + Visuals */}
+                            <div className="lg:col-span-2 space-y-4">
+                                <div className="rounded-2xl border p-5 bg-white/80">
+                                    <div className="flex items-center justify-between">
+                                        <div className="font-semibold">Your Intake Queue</div>
+                                        <div className="text-sm text-gray-500">Potential: {formatCurrency(totalPotential)}</div>
+                                    </div>
+                                    <div className="mt-4 grid md:grid-cols-2 gap-4">
+                                        {items.map((it) => (
+                                            <div key={it.id} className="rounded-xl border p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div className="font-medium">{it.title}</div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {it.category} · {it.condition} · {formatCurrency(it.estPrice)} · {it.intakeOption}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full border ${it.status === "Sold" ? "bg-emerald-50 text-emerald-700" : it.status === "Listed" ? "bg-teal-50 text-teal-700" : "bg-gray-50 text-gray-700"}`}>
+                                                        {it.status}
+                                                    </span>
+                                                </div>
+                                                {it.photos?.length > 0 ? (
+                                                    <div className="mt-3 grid grid-cols-4 gap-2">
+                                                        {it.photos.slice(0, 4).map((src, i) => (
+                                                            <img key={i} src={src} alt="preview" className="w-full h-20 object-cover rounded-lg border" />
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-3 aspect-[4/1] rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border" />
+                                                )}
+                                                {it.appraisal && (
+                                                    <div className="mt-3 text-xs text-gray-700">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <span className="px-2 py-1 rounded-full border bg-white">Suggest: <strong>{formatCurrency(it.appraisal.suggested)}</strong></span>
+                                                            <span className="px-2 py-1 rounded-full border bg-white">Range: {formatCurrency(it.appraisal.rangeLow)}–{formatCurrency(it.appraisal.rangeHigh)}</span>
+                                                            <span className="px-2 py-1 rounded-full border bg-white">ETA: {it.appraisal.avgDaysToSell} days</span>
+                                                        </div>
+                                                        <div className="mt-2 flex flex-wrap gap-2 items-center">
+                                                            <span className="text-gray-500">Best platforms:</span>
+                                                            {it.appraisal.topPlatforms.map((id) => (
+                                                                <Pill key={id}>{(marketplaces.find((m) => m.id === id)?.name) || id}</Pill>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {it.status !== "Queued" && (
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        {it.listedOn?.map((id) => (
+                                                            <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {!items.length && (
+                                            <div className="text-sm text-gray-500">No items yet. Add one using the form to the left.</div>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap gap-3">
+                                        <button onClick={simulateDistribution} className="px-4 py-2 rounded-xl border">Simulate cross-listing</button>
+                                        <button onClick={simulateSales} className="px-4 py-2 rounded-xl border">Simulate sales</button>
+                                    </div>
+                                </div>
+
+                                {/* Visual gallery */}
+                                <div className="rounded-2xl border p-5 bg-white/80">
+                                    <div className="font-semibold mb-3">Sample Gallery</div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {[1,2,3,4,5,6,7,8].map((i) => (
+                                            <div key={i} className="aspect-square rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 border" />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Dashboard */}
+                    <section id="dashboard" className="py-14">
+                        <SectionTitle
+                            eyebrow="Seller Dashboard"
+                            title="Operate like a pro from day one"
+                            subtitle="A single view of intake, listings, sales, and payouts across platforms."
+                        />
+                        <div className="max-w-7xl mx-auto px-4 space-y-6">
+                            <div className="grid md:grid-cols-4 gap-4">
+                                <StatCard title="Total Potential" value={formatCurrency(totalPotential)} sub={`${items.length} items`} />
+                                <StatCard title="Active Listings" value={listedItems.length} sub="multi-platform" />
+                                <StatCard title="Sold (demo)" value={soldItems.length} sub={topPlatform ? `Top: ${topPlatform.name}` : "—"} />
+                                <StatCard title="Commission Tier" value={`${Math.round(commissionRate * 100)}%`} sub="updates monthly" />
+                            </div>
+                            <div className="grid md:grid-cols-12 gap-6">
+                                <div className="md:col-span-7 rounded-2xl border bg-white/80 p-5">
+                                    <div className="font-semibold mb-3">Active Listings</div>
+                                    <div className="overflow-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="text-left text-gray-500">
+                                                    <th className="py-2 pr-2">Item</th>
+                                                    <th className="py-2 pr-2">Platforms</th>
+                                                    <th className="py-2 pr-2">Est. Price</th>
+                                                    <th className="py-2 pr-2">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {items.filter((i) => i.status !== "Queued").map((it) => (
+                                                    <tr key={it.id} className="border-t">
+                                                        <td className="py-2 pr-2">
+                                                            <div className="font-medium">{it.title}</div>
+                                                            <div className="text-xs text-gray-500">{it.category} · {it.condition}</div>
+                                                        </td>
+                                                        <td className="py-2 pr-2">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(it.soldOn ? [it.soldOn] : it.listedOn)?.map((id) => (
+                                                                    <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-2 pr-2">{formatCurrency(it.estPrice)}</td>
+                                                        <td className="py-2 pr-2">{it.status}</td>
+                                                    </tr>
+                                                ))}
+                                                {items.filter((i) => i.status !== "Queued").length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="py-4 text-sm text-gray-500">No active listings yet.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-5 rounded-2xl border bg-white/80 p-5">
+                                    <div className="font-semibold mb-3">Platform Performance (demo)</div>
+                                    <div className="space-y-2">
+                                        {marketplaces.map((m) => (
+                                            <div key={m.id} className="flex items-center gap-3">
+                                                <div className="w-28 text-sm text-gray-600">{m.name}</div>
+                                                <div className="h-2 flex-1 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-emerald-500"
+                                                        style={{ width: `${Math.min(100, (platformTotals[m.id] || 0) / (totalPotential || 1) * 100)}%` }}
+                                                    />
+                                                </div>
+                                                <div className="w-24 text-right text-sm">{formatCurrency(platformTotals[m.id] || 0)}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 text-xs text-gray-500">Demo metric: sum of sold item estimates by platform.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Pricing */}
+                    <section id="pricing" className="py-14 border-t bg-white">
+                        <SectionTitle
+                            eyebrow="Pricing"
+                            title="Simple, performance-based pricing"
+                            subtitle="Commission scales down as your monthly volume goes up. Optional add-ons for brand sellers."
+                        />
+                        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-6">
+                            {[{tier:"Starter",comm:22,desc:"Great for first-time sellers",perks:["Cross-list to 2 markets","Standard photos","Email support"]},
+                                {tier:"Growth",comm:18,desc:"For frequent sellers",perks:["Cross-list to 4+ markets","Pro photos & SEO","Priority support"]},
+                                {tier:"Pro",comm:15,desc:"For high-volume resellers",perks:["Cross-list to all markets","AI-assisted pricing","Dedicated account manager"]}].map((p, i) => (
+                                <div key={i} className={`rounded-2xl border p-6 ${p.comm === 18 ? 'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/50' : 'bg-white/80'}`}>
+                                    <div className="text-xs uppercase tracking-widest font-semibold text-emerald-600">{p.tier}</div>
+                                    <div className="text-4xl font-bold mt-2">
+                                        {p.comm}%
+                                        <span className="text-base font-normal text-gray-500"> commission</span>
+                                    </div>
+                                    <div className="text-sm text-gray-600 mt-2">{p.desc}</div>
+                                    <ul className="mt-4 space-y-2 text-sm">
+                                        {p.perks.map((perk, j) => (
+                                            <li key={j} className="flex items-start gap-2">
+                                                <svg className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                                {perk}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <button className={`mt-6 w-full py-3 rounded-xl font-medium ${p.comm === 18 ? 'bg-emerald-600 text-white' : 'border'}`}>Select Plan</button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="max-w-6xl mx-auto px-4 mt-8 text-sm text-center text-gray-500">
+                            Commission is calculated on the final sale price and includes all marketplace fees.
+                        </div>
+                    </section>
+                    
+                    {/* FAQ */}
+                    <section id="faq" className="py-14">
+                        <SectionTitle
+                            eyebrow="FAQ"
+                            title="Quick answers to common questions"
+                            subtitle="Everything you need to know about getting started."
+                        />
+                        <div className="max-w-4xl mx-auto px-4 space-y-4">
+                            {[
+                                {q: "How fast do items sell?", a: "Our proprietary cross-listing engine and smart pricing aim to sell items within 30 days. High-demand items often sell in the first week. See the live appraisal for a specific ETA."},
+                                {q: "What is the fee structure?", a: "We charge a performance-based commission ranging from 15% to 22% of the final sale price, which is tiered based on your rolling monthly volume. This includes all marketplace fees and processing costs."},
+                                {q: "How do I get my items to you?", a: "You can choose from a scheduled pickup service, drop off items at a certified partner location, or ship them to our processing center. Select your preferred method during the intake process."},
+                                {q: "What happens if an item doesn't sell?", a: "After 90 days, we can re-evaluate the price, relist on lower-demand platforms, or return the item to you (shipping fee applies) or donate it on your behalf."},
+                            ].map((item, i) => (
+                                <div key={i} className="rounded-xl border p-4 bg-white/70">
+                                    <div className="font-semibold text-gray-800">{item.q}</div>
+                                    <div className="mt-2 text-sm text-gray-600">{item.a}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <footer className="mt-10 py-8 border-t bg-white">
+                        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+                            &copy; 2024 Loop. Certified Resale Prototype. All rights reserved.
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        // Render the App component
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</head>
+<body class="antialiased">
+    <div id="root">
         </div>
-      </footer>
-    </div>
-  );
-}
+</body>
+</html>
