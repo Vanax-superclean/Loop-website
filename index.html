@@ -12,21 +12,22 @@
 
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
     <script type="text/babel">
+        
         // ----------------------------------------------------------------------
         // START OF APPLICATION CODE (omni_sell_resale_infrastructure_prototype_web_app (1).jsx)
         // ----------------------------------------------------------------------
         
         import React, { useMemo, useState } from "react";
         import { motion } from "framer-motion";
-        
+
         // LOOP – Certified Resale Across Every Marketplace
         // Visual-forward single-file prototype (Tailwind + Framer Motion)
         // Features: Landing, Brand section, How it works, Intake, Gallery, Dashboard, Pricing, Testimonials, FAQ
-        
+
         const marketplaces = [
           { id: "ebay", name: "eBay" },
           { id: "facebook", name: "Facebook Marketplace" },
@@ -35,7 +36,7 @@
           { id: "mercari", name: "Mercari" },
           { id: "whatnot", name: "Whatnot" },
         ];
-        
+
         const categories = [
           "Clothing",
           "Shoes",
@@ -46,7 +47,7 @@
           "Collectibles",
           "Other",
         ];
-        
+
         function Pill({ children }) {
           return (
             <span className="inline-flex items-center text-xs px-2 py-1 rounded-full border bg-white/80">
@@ -54,7 +55,7 @@
             </span>
           );
         }
-        
+
         function StatCard({ title, value, sub }) {
           return (
             <div className="rounded-2xl shadow-sm border p-5 bg-white/70 backdrop-blur">
@@ -64,7 +65,7 @@
             </div>
           );
         }
-        
+
         function SectionTitle({ eyebrow, title, subtitle }) {
           return (
             <div className="max-w-3xl mx-auto text-center pb-8">
@@ -80,7 +81,7 @@
             </div>
           );
         }
-        
+
         function formatCurrency(n) {
           try {
             return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
@@ -88,7 +89,7 @@
             return `$${Number(n).toFixed(2)}`;
           }
         }
-        
+
         export default function App() {
           const [items, setItems] = useState([]);
           const [form, setForm] = useState({
@@ -100,19 +101,19 @@
             notes: "",
           });
           const [photoFiles, setPhotoFiles] = useState([]);
-        
+
           // --- New: live appraisal state ---
           const [appraisal, setAppraisal] = useState(null);
           const [comps, setComps] = useState([]);
           const [appraising, setAppraising] = useState(false);
-        
+
           const totalPotential = useMemo(
             () => items.reduce((sum, it) => sum + (Number(it.estPrice) || 0), 0),
             [items]
           );
           const soldItems = useMemo(() => items.filter((it) => it.status === "Sold"), [items]);
           const listedItems = useMemo(() => items.filter((it) => it.status === "Listed"), [items]);
-        
+
           const platformTotals = useMemo(() => {
             const totals = {};
             marketplaces.forEach((m) => (totals[m.id] = 0));
@@ -121,7 +122,7 @@
             });
             return totals;
           }, [soldItems]);
-        
+
           // --- New: mock internet comps + appraisal engine ---
           function mockFetchComps(title, category, condition) {
             // Generate 5 pseudo comps with price jitter and platform bias
@@ -154,7 +155,7 @@
             });
             return generated;
           }
-        
+
           function runAppraisal() {
             if (!form.title) return;
             setAppraising(true);
@@ -171,7 +172,7 @@
             const days = c.map((x) => x.daysToSell);
             const avgDays = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
             const conf = Math.min(95, 60 + Math.round(Math.random() * 35));
-        
+
             const app = {
               suggested: Math.round(avg * 100) / 100,
               rangeLow: Math.round(p10 * 100) / 100,
@@ -185,7 +186,7 @@
             setAppraisal(app);
             setTimeout(() => setAppraising(false), 350);
           }
-        
+
           function handleAddItem(e) {
             e?.preventDefault();
             if (!form.title || !form.estPrice) return;
@@ -231,21 +232,21 @@
               })
             );
           }
-        
+
           const topPlatform = useMemo(() => {
             const entries = Object.entries(platformTotals);
             if (!entries.length) return null;
             const [id] = entries.sort((a, b) => b[1] - a[1])[0];
             return marketplaces.find((m) => m.id === id) || null;
           }, [platformTotals]);
-        
+
           const commissionRate = useMemo(() => {
             const volume = soldItems.reduce((s, it) => s + (Number(it.estPrice) || 0), 0);
             if (volume > 5000) return 0.15;
             if (volume > 1000) return 0.18;
             return 0.22;
           }, [soldItems]);
-        
+
           return (
             <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white text-gray-900">
               {/* Nav */}
@@ -272,7 +273,7 @@
                   </div>
                 </div>
               </header>
-        
+
               {/* Hero */}
               <section className="relative overflow-hidden">
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-200/60 blur-3xl rounded-full" />
@@ -305,7 +306,7 @@
                       ))}
                     </div>
                   </div>
-        
+
                   {/* Visual dashboard preview */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -333,7 +334,7 @@
                   </motion.div>
                 </div>
               </section>
-        
+
               {/* Brand strip */}
               <section id="brand" className="py-10 border-t bg-white">
                 <div className="max-w-7xl mx-auto px-4">
@@ -347,7 +348,7 @@
                   </div>
                 </div>
               </section>
-        
+
               {/* How it works */}
               <section id="how" className="py-14">
                 <SectionTitle
@@ -368,7 +369,7 @@
                   ))}
                 </div>
               </section>
-        
+
               {/* Intake + Gallery */}
               <section id="intake" className="py-14 border-t bg-white">
                 <SectionTitle
@@ -443,7 +444,7 @@
                         </select>
                       </div>
                     </div>
-        
+
                     {/* --- New: live appraisal card --- */}
                     <div className="mt-4 rounded-2xl border p-4 bg-gradient-to-br from-emerald-50 to-teal-50">
                       <div className="flex items-center justify-between">
@@ -502,7 +503,7 @@
                         </div>
                       )}
                     </div>
-        
+
                     <div className="mt-3">
                       <label className="block text-sm font-medium">Photos (mock)</label>
                       <input
@@ -528,7 +529,7 @@
                     </button>
                     <div className="text-xs text-gray-500 mt-2">All data stays in your browser for this demo.</div>
                   </form>
-        
+
                   {/* Queue + Visuals */}
                   <div className="lg:col-span-2 space-y-4">
                     <div className="rounded-2xl border p-5 bg-white/80">
@@ -577,7 +578,7 @@
                             {it.status !== "Queued" && (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {it.listedOn?.map((id) => (
-                                  <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
+                                  <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pull>
                                 ))}
                               </div>
                             )}
@@ -592,7 +593,7 @@
                         <button onClick={simulateSales} className="px-4 py-2 rounded-xl border">Simulate sales</button>
                       </div>
                     </div>
-        
+
                     {/* Visual gallery */}
                     <div className="rounded-2xl border p-5 bg-white/80">
                       <div className="font-semibold mb-3">Sample Gallery</div>
@@ -605,7 +606,7 @@
                   </div>
                 </div>
               </section>
-        
+
               {/* Dashboard */}
               <section id="dashboard" className="py-14">
                 <SectionTitle
@@ -681,7 +682,7 @@
                   </div>
                 </div>
               </section>
-        
+
               {/* Pricing */}
               <section id="pricing" className="py-14 border-t bg-white">
                 <SectionTitle
@@ -707,7 +708,7 @@
                   ))}
                 </div>
               </section>
-        
+
               {/* Testimonials */}
               <section className="py-14">
                 <SectionTitle
@@ -726,7 +727,7 @@
                   ))}
                 </div>
               </section>
-        
+
               {/* FAQ + Footer */}
               <section id="faq" className="py-14 border-t bg-white">
                 <SectionTitle
@@ -748,7 +749,7 @@
                   ))}
                 </div>
               </section>
-        
+
               <footer className="py-10 border-t">
                 <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
@@ -764,10 +765,6 @@
             </div>
           );
         }
-        
-        // ----------------------------------------------------------------------
-        // END OF APPLICATION CODE
-        // ----------------------------------------------------------------------
 
         // 5. INITIALIZATION: Render the App
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
