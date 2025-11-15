@@ -18,12 +18,16 @@
     <script type="text/babel">
         
         // ----------------------------------------------------------------------
-        // START OF APPLICATION CODE (omni_sell_resale_infrastructure_prototype_web_app (1).jsx)
+        // START OF APPLICATION CODE
         // ----------------------------------------------------------------------
         
-        import React, { useMemo, useState } from "react";
-        import { motion } from "framer-motion";
-
+        // FIX: Replaced 'import { useMemo, useState } from "react";'
+        // FIX: Replaced 'import { motion } from "framer-motion";'
+        // FIX: Removed 'export default' from function App
+        
+        const { useMemo, useState } = React; // Access hooks from the globally loaded React object
+        const { motion } = window.FramerMotion; // Access motion from the globally loaded FramerMotion object
+        
         // LOOP – Certified Resale Across Every Marketplace
         // Visual-forward single-file prototype (Tailwind + Framer Motion)
         // Features: Landing, Brand section, How it works, Intake, Gallery, Dashboard, Pricing, Testimonials, FAQ
@@ -90,7 +94,7 @@
           }
         }
 
-        export default function App() {
+        function App() { // FIX: Removed 'export default'
           const [items, setItems] = useState([]);
           const [form, setForm] = useState({
             title: "",
