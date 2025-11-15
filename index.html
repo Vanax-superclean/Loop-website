@@ -578,7 +578,7 @@
                             {it.status !== "Queued" && (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {it.listedOn?.map((id) => (
-                                  <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pull>
+                                  <Pill key={id}>{marketplaces.find((m) => m.id === id)?.name || id}</Pill>
                                 ))}
                               </div>
                             )}
